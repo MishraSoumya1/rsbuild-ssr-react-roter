@@ -1,6 +1,8 @@
 import express from 'express';
-import fs from 'node:fs';
+import fs from 'fs';
 import { createRsbuild, loadConfig, logger } from '@rsbuild/core';
+import path from 'path';
+import favicon from 'serve-favicon';
 
 const templateHtml = fs.readFileSync('./template.html', 'utf-8');
 let manifest;
@@ -17,26 +19,17 @@ const serverRender = (serverAPI) => async (req, res) => {
   const { js = [], css = [] } = entries['index'].initial;
 
   const scriptTags = js
-    .map((url) => `<script src="${url}" defer></script>`)
+    .map((src) => `<script src="${src}" defer></script>`)
     .join('\n');
   const styleTags = css
-    .map((file) => `<link rel="stylesheet" href="${file}">`)
+    .map((href) => `<link rel="stylesheet" href="${href}">`)
     .join('\n');
 
-  const safeJson = JSON.stringify(data ?? {}).replace(/</g, '\\u003c');
+  const html = templateHtml
+    .replace('<!--app-content-->', markup)
+    .replace('<!--app-head-->', `${scriptTags}\n${styleTags}`);
 
-  const html = templateHtml.replace('<!--app-content-->', markup).replace(
-    '<!--app-head-->',
-    `
-      <script id="server-data" type="application/json">${safeJson}</script>
-      ${scriptTags}
-      ${styleTags}
-      `
-  );
-
-  res.writeHead(200, {
-    'Content-Type': 'text/html',
-  });
+  res.writeHead(200, { 'Content-Type': 'text/html' });
   res.end(html);
 };
 
@@ -50,34 +43,43 @@ export async function startDevServer() {
 
   const app = express();
 
-  // Middleware to parse JSON and form-encoded POST bodies
+  app.use(express.static('public'));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  app.use(favicon(path.join(process.cwd(), 'public', 'favicon.ico')));
 
   const rsbuildServer = await rsbuild.createDevServer();
   const serverRenderMiddleware = serverRender(rsbuildServer);
 
-  // GET /
-  app.get('/', async (req, res, next) => {
-    try {
-      await serverRenderMiddleware(req, res);
-    } catch (err) {
-      logger.error('SSR render error (GET), downgrade to CSR...\n', err);
-      next();
-    }
+  // Define routes config array here
+  const routes = ['/', '/about']; // Add your routes here
+
+  routes.forEach((route) => {
+    app.get(route, async (req, res, next) => {
+      try {
+        await serverRenderMiddleware(req, res);
+      } catch (err) {
+        logger.error(
+          `SSR render error (GET ${route}), downgrade to CSR...\n`,
+          err
+        );
+        next();
+      }
+    });
+
+    app.post(route, async (req, res, next) => {
+      try {
+        await serverRenderMiddleware(req, res);
+      } catch (err) {
+        logger.error(
+          `SSR render error (POST ${route}), downgrade to CSR...\n`,
+          err
+        );
+        next();
+      }
+    });
   });
 
-  // POST /
-  app.post('/', async (req, res, next) => {
-    try {
-      await serverRenderMiddleware(req, res);
-    } catch (err) {
-      logger.error('SSR render error (POST), downgrade to CSR...\n', err);
-      next();
-    }
-  });
-
-  // Rsbuild dev middlewares
   app.use(rsbuildServer.middlewares);
 
   const httpServer = app.listen(rsbuildServer.port, () => {
