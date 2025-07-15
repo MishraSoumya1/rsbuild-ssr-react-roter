@@ -78,6 +78,20 @@ export async function startDevServer() {
         next();
       }
     });
+
+    // Proxy API route (hides real URL from client)
+    app.post('/api/aboutData', async (req, res) => {
+      try {
+        const response = await fetch(
+          'https://jsonplaceholder.typicode.com/users'
+        );
+        const data = await response.json();
+        res.json(data); // send result back to client
+      } catch (error) {
+        console.error('API proxy error:', error);
+        res.status(500).json({ error: 'Failed to fetch data' });
+      }
+    });
   });
 
   app.use(rsbuildServer.middlewares);
