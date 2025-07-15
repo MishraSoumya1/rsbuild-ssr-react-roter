@@ -8,6 +8,7 @@ export default defineConfig({
       output: {
         target: 'web',
         manifest: true,
+        polyfill: 'usage',
       },
       source: {
         entry: {
@@ -17,6 +18,7 @@ export default defineConfig({
     },
     ssr: {
       output: {
+        polyfill: 'usage',
         target: 'node',
         distPath: {
           root: 'dist/server',
@@ -31,6 +33,6 @@ export default defineConfig({
   },
   tools: {
     htmlPlugin: false,
-    rspack(config, { appendPlugins }) {},
+    rspack(config, { appendPlugins, mergeConfig }) {},
   },
 });
