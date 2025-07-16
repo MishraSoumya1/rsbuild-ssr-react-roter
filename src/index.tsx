@@ -8,5 +8,5 @@ const serverData = el ? JSON.parse(el.textContent || '{}') : {};
 
 hydrateRoot(
   document.getElementById('root')!,
-  <App Router={BrowserRouter} serverData={serverData} />
+  <App Router={(props) => <BrowserRouter basename='/' {...props} />} serverData={serverData} />
 );
