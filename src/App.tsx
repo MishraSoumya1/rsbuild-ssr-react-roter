@@ -16,8 +16,8 @@ const App = ({ Router, serverData }: AppProps) => {
     <div className="main">
       <Router>
         <div className='app-header'>
-          <nav style={{ marginBottom: 20 }}>
-            <Link to="/" style={{ marginRight: 10 }}>Home</Link>
+          <nav>
+            <Link to="/">Home</Link>
             <Link to="/about">About</Link>
           </nav>
         </div>
